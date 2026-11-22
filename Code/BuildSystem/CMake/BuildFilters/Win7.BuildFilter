@@ -1,0 +1,43 @@
+# Build filter for the Windows 7 (SP1) backport.
+#
+# Contains the engine core, the D3D11 renderer and the primary test executables, but intentionally
+# excludes the Editor (Qt) and the Vulkan backend (extra SDK download) so that a Windows 7 targeting
+# build stays lean and only covers the parts that are actually Windows-7 compatible. See
+# Documentation/Windows7Backport.md.
+set_property(GLOBAL PROPERTY EZ_BUILD_FILTER_Win7
+    Foundation
+    Core
+    RendererCore
+    RendererFoundation
+    RendererDX11
+    GameEngine
+    ToolsFoundation
+    Texture
+    TexConv
+    enet
+    zstd
+    stb
+    stb_image
+    tinyexr
+    zlib
+    ozz
+    meshoptimizer
+    TracyClient
+    Lua
+    lunasvg
+    Imgui
+    ads
+    Utilities
+    ShaderCompilerHLSL
+    ShaderCompilerDXC
+    Fileserve
+    FileservePlugin
+    GdbProxy
+    Inspector
+    MiniDumpTool
+    DependencyAnalysis
+    FoundationTest
+    CoreTest
+    ToolsFoundationTest
+    GameEngineTest
+)

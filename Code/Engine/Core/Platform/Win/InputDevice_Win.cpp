@@ -1,5 +1,7 @@
 #include <Core/CorePCH.h>
 
+#include <Foundation/Platform/Win/Utils/WinDpiUtils.h>
+
 #if EZ_ENABLED(EZ_PLATFORM_WINDOWS_DESKTOP)
 
 #  include <Core/Input/InputManager.h>
@@ -956,6 +958,28 @@ void ezInputDeviceMouseKeyboard_Win::ApplyShowMouseCursor(bool bShow, bool bCust
   }
 }
 
+namespace
+{
+  // GetSystemMetricsForDpi is only available on Windows 10 1607 and newer. Resolve it dynamically so the
+  // binary also links and runs on Windows 7, where we fall back to GetSystemMetrics.
+  using PFN_GetSystemMetricsForDpi = int(WINAPI*)(int nIndex, UINT dpi);
+
+  PFN_GetSystemMetricsForDpi GetSystemMetricsForDpiFunc()
+  {
+    static PFN_GetSystemMetricsForDpi s_pfn = nullptr;
+    static bool s_bInitialized = false;
+    if (!s_bInitialized)
+    {
+      s_bInitialized = true;
+      if (HMODULE hUser32 = GetModuleHandleW(L"user32.dll"))
+      {
+        s_pfn = reinterpret_cast<PFN_GetSystemMetricsForDpi>(GetProcAddress(hUser32, "GetSystemMetricsForDpi"));
+      }
+    }
+    return s_pfn;
+  }
+} // namespace
+
 ezUInt32 ezInputDeviceMouseKeyboard_Win::GetHardwareCursorSize() const
 {
   // SM_CXCURSOR reflects the user's 'mouse pointer size' accessibility setting.
@@ -963,11 +987,14 @@ ezUInt32 ezInputDeviceMouseKeyboard_Win::GetHardwareCursorSize() const
   // custom cursor has to be rendered at to match the OS cursor on any monitor.
   if (m_hWnd != nullptr)
   {
-    const UINT uiDpi = GetDpiForWindow(ezMinWindows::ToNative(m_hWnd));
-
+    const ezUInt32 uiDpi = ezWindowsDpiUtils::GetWindowDpi(ezMinWindows::ToNative(m_hWnd));
     if (uiDpi != 0)
     {
-      return (ezUInt32)GetSystemMetricsForDpi(SM_CXCURSOR, uiDpi);
+      if (PFN_GetSystemMetricsForDpi pfn = GetSystemMetricsForDpiFunc())
+      {
+        return (ezUInt32)pfn(SM_CXCURSOR, uiDpi);
+      }
+      return (ezUInt32)GetSystemMetrics(SM_CXCURSOR);
     }
   }
 

@@ -31,6 +31,20 @@
       "environment": {}
     },
     {
+      "name": "vs2019x64-win7",
+      "hidden": false,
+      "generator": "Visual Studio 16 2019",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/Workspace/${presetName}",
+      "cacheVariables": {
+        "EZ_ENABLE_FOLDER_UNITY_FILES" : "ON",
+        "EZ_COMPILE_ENGINE_AS_DLL" : "ON",
+        "EZ_TARGET_WINDOWS7" : "ON",
+        "EZ_BUILD_FILTER" : "Win7"
+      },
+      "environment": {}
+    },
+    {
       "name": "linux-base",
       "hidden": true,
       "generator": "Ninja",

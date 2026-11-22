@@ -1,0 +1,55 @@
+name: Build Engine (Windows 7 / VS2019)
+
+# Builds the engine core for the Windows 7 (SP1) backport using the v142 (VS2019) toolset.
+# See Documentation/Windows7Backport.md for context. The 'vs2019x64-win7' CMake preset lowers
+# _WIN32_WINNT to 0x0601 and uses the 'Win7' build filter (engine core + D3D11 + tests, no Editor/Qt).
+
+on:
+  push:
+    branches: [arena/5b2bb0af-ezengine-win7]
+  pull_request:
+    branches: [arena/5b2bb0af-ezengine-win7]
+  workflow_dispatch:
+
+jobs:
+  build-win7:
+    name: Build (VS2019, Windows 7 target)
+    runs-on: windows-2019   # ships the v142 toolset required to produce Windows 7 compatible binaries
+    timeout-minutes: 300
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Only the precompiled tools submodule is required to build (it provides cmake/clang-format).
+          submodules: 'Data/Tools/Precompiled'
+          lfs: false
+
+      - name: Tool versions
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          & "Data\Tools\Precompiled\cmake\bin\cmake.exe" --version
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion
+
+      - name: Configure (CMake preset vs2019x64-win7)
+        shell: pwsh
+        run: |
+          ./RunCMake.ps1 -Target vs2019x64-win7 -SolutionName ci -WorkspaceDir ci-win7 -NoUnityBuild
+
+      - name: Build (Dev)
+        shell: pwsh
+        run: |
+          $cmake = "Data\Tools\Precompiled\cmake\bin\cmake.exe"
+          & $cmake --build Workspace\ci-win7 --config Dev -- -m -p:CL_MPCount=2
+
+      - name: Run FoundationTest
+        shell: pwsh
+        run: |
+          $bin = "Workspace\ci-win7-output\Bin\WinVs2019Dev64"
+          & "$bin\FoundationTest.exe" -agent -nogui -outputDir "$bin\TestOutput\FoundationTest"
+
+      - name: Run CoreTest
+        shell: pwsh
+        run: |
+          $bin = "Workspace\ci-win7-output\Bin\WinVs2019Dev64"
+          & "$bin\CoreTest.exe" -agent -nogui -outputDir "$bin\TestOutput\CoreTest"
