@@ -1,6 +1,6 @@
 param
 (
-    [Parameter(Mandatory = $True)] [ValidateSet('vs2022x64', 'vs2026x64', 'android-arm64-debug', 'android-arm64-dev', 'android-arm64-shipping', 'android-x64-debug', 'android-x64-dev', 'android-x64-shipping')][string] $Target,
+    [Parameter(Mandatory = $True)] [ValidateSet('vs2022x64', 'vs2026x64', 'vs2019x64-win7', 'android-arm64-debug', 'android-arm64-dev', 'android-arm64-shipping', 'android-x64-debug', 'android-x64-dev', 'android-x64-shipping')][string] $Target,
     [switch]$NoSubmoduleUpdate,
     [switch]$NoUnityBuild,
     [string]$SolutionName,

@@ -65,14 +65,21 @@ namespace
   {
     ComPtr<IDXGIAdapter1> pAdapter;
     ComPtr<IDXGIFactory1> pFactory1;
-    ComPtr<IDXGIFactory6> pFactory6;
     if (!GetDXGIFactory(pFactory1.GetAddressOf()))
       return {};
 
-    if (FAILED(pFactory1->QueryInterface(IID_PPV_ARGS(pFactory6.GetAddressOf()))))
-      return {};
+    // IDXGIFactory6 / EnumAdapterByGpuPreference only exist on Windows 10. On Windows 7/8 fall back to the
+    // first adapter reported by IDXGIFactory1.
+    ComPtr<IDXGIFactory6> pFactory6;
+    if (SUCCEEDED(pFactory1->QueryInterface(IID_PPV_ARGS(pFactory6.GetAddressOf()))))
+    {
+      if (pFactory6->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(pAdapter.ReleaseAndGetAddressOf())) != DXGI_ERROR_NOT_FOUND)
+      {
+        return pAdapter;
+      }
+    }
 
-    if (pFactory6->EnumAdapterByGpuPreference(0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(pAdapter.ReleaseAndGetAddressOf())) == DXGI_ERROR_NOT_FOUND)
+    if (FAILED(pFactory1->EnumAdapters1(0, pAdapter.ReleaseAndGetAddressOf())))
       return {};
 
     return pAdapter;

@@ -48,14 +48,46 @@ namespace
     if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&pFactory1))))
       return nullptr;
 
-    if (FAILED(pFactory1->QueryInterface(IID_PPV_ARGS(&pFactory6))))
-      return nullptr;
+    // IDXGIFactory6 and EnumAdapterByGpuPreference are only available on Windows 10. On Windows 7/8 the
+    // interface does not exist, so fall back to enumerating adapters through IDXGIFactory1 instead.
+    if (SUCCEEDED(pFactory1->QueryInterface(IID_PPV_ARGS(&pFactory6))))
+    {
+      ezHybridArray<IDXGIAdapter1*, 4> adapters;
+      ezHybridArray<ezString, 4> adapterNames;
 
+      IDXGIAdapter1* pAdapter = nullptr;
+      while (pFactory6->EnumAdapterByGpuPreference(adapters.GetCount(), DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&pAdapter)) == S_OK)
+      {
+        DXGI_ADAPTER_DESC1 desc = {};
+        pAdapter->GetDesc1(&desc);
+
+        adapters.PushBack(pAdapter);
+        adapterNames.PushBack(ezStringUtf8(desc.Description).GetView());
+        pAdapter = nullptr;
+      }
+
+      if (!adapters.IsEmpty())
+      {
+        const ezInt32 iSelected = ezMath::Max(0, ezGALDevice::SelectGpuFromCommandLine(adapterNames));
+
+        for (ezUInt32 i = 0; i < adapters.GetCount(); ++i)
+        {
+          if (i != static_cast<ezUInt32>(iSelected))
+          {
+            EZ_GAL_DX11_RELEASE(adapters[i]);
+          }
+        }
+
+        return adapters[iSelected];
+      }
+    }
+
+    // Windows 7 / 8 fallback: enumerate all adapters reported by IDXGIFactory1 and pick the requested one.
     ezHybridArray<IDXGIAdapter1*, 4> adapters;
     ezHybridArray<ezString, 4> adapterNames;
 
     IDXGIAdapter1* pAdapter = nullptr;
-    while (pFactory6->EnumAdapterByGpuPreference(adapters.GetCount(), DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&pAdapter)) == S_OK)
+    for (UINT uiAdapterIndex = 0; pFactory1->EnumAdapters1(uiAdapterIndex, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++uiAdapterIndex)
     {
       DXGI_ADAPTER_DESC1 desc = {};
       pAdapter->GetDesc1(&desc);
@@ -188,10 +220,16 @@ retry:
 
     ezLog::Success("Initialized D3D11 device '{}' with feature level {}.", desc1.Description, FeatureLevelNames[FeatureLevelIdx]);
 
-    // Validate that we got the minimum required feature level
+    // Validate that we got the minimum required feature level. On Windows 7 the D3D11.1 runtime is only
+    // available through the optional "Platform Update" (KB2670838), so the minimum is relaxed to 11.0 there.
+    // On all other targets 11.1 is always present and remains the requirement.
+#if defined(EZ_TARGET_WINDOWS7)
+    if (m_uiFeatureLevel < D3D_FEATURE_LEVEL_11_0)
+#else
     if (m_uiFeatureLevel < D3D_FEATURE_LEVEL_11_1)
+#endif
     {
-      EZ_REPORT_FAILURE("The graphics hardware only supports Direct3D feature level {0}, but ezEngine requires feature level 11.1 or higher. ", FeatureLevelNames[FeatureLevelIdx]);
+      EZ_REPORT_FAILURE("The graphics hardware only supports Direct3D feature level {0}, but ezEngine requires at least feature level 11.0 (11.1 on non-Windows 7 targets). ", FeatureLevelNames[FeatureLevelIdx]);
       return EZ_FAILURE;
     }
   }
