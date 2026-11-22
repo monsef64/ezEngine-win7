@@ -20,9 +20,19 @@ option(EZ_TARGET_WINDOWS7 "Build for Windows 7 SP1 instead of the latest Windows
 
 if(EZ_TARGET_WINDOWS7)
   message(STATUS "Targeting Windows 7 SP1 (EZ_TARGET_WINDOWS7=ON): _WIN32_WINNT=0x0601, WINVER=0x0601, NTDDI_VERSION=NTDDI_WIN7")
+
   # Restrict the Windows headers to the Windows 7 API surface. Any Windows 8+ API must then either be resolved
   # at runtime (which the engine already does for most of them) or be guarded behind EZ_TARGET_WINDOWS7.
   add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 NTDDI_VERSION=0x06010000 EZ_TARGET_WINDOWS7=1)
+
+  # Statically link the C/C++ runtime so the binaries do not depend on the external Universal CRT
+  # (ucrtbase.dll / vcruntime140.dll / msvcp140.dll), which is absent on a stock Windows 7 install. With this
+  # the runtime is linked into the binaries and no VC++ redistributable / KB2999226 (Universal CRT) deployment
+  # is required on the target machine. See Documentation/Windows7Backport.md.
+  option(EZ_MSVC_STATIC_RUNTIME "Statically link the MSVC C/C++ runtime so the binaries do not require the external Universal CRT (ucrtbase.dll) on Windows 7." ON)
+  if(EZ_MSVC_STATIC_RUNTIME)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+  endif()
 endif()
 
 if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)

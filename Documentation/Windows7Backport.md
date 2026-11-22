@@ -75,9 +75,13 @@ push/PR to this branch and can also be started manually via `workflow_dispatch`.
 
 ## Runtime requirements (Windows 7 target machine)
 
-* **Visual C++ 2019 redistributable (x64)** and the **Universal CRT**. On a clean Windows 7 SP1 the
-  Universal CRT is not present; install it via the [KB2999226](https://support.microsoft.com/kb/2999226)
-  update (or the convenience rollup / the VC++ 2019 redistributable, which bundles it).
+* **No external C/C++ runtime deployment required.** The Windows 7 build links the MSVC runtime
+  **statically** (`/MT` in release, `/MTd` in debug) through the `EZ_MSVC_STATIC_RUNTIME` option (ON by
+  default with `EZ_TARGET_WINDOWS7`), so the binaries do **not** depend on `ucrtbase.dll`,
+  `vcruntime140.dll` or `msvcp140.dll`. A stock Windows 7 SP1 therefore needs neither the
+  [Universal CRT (KB2999226)](https://support.microsoft.com/kb/2999226) nor the VC++ 2019 redistributable.
+  Set `EZ_MSVC_STATIC_RUNTIME=OFF` to revert to the dynamic CRT if you would rather deploy the
+  redistributable instead.
 * **(Optional) KB2670838 "Platform Update for Windows 7"** — installs the D3D11.1 runtime. Without it the
   engine runs at feature level **11.0** (what this backport accepts). With it, feature level **11.1** is
   available and used automatically.
@@ -87,6 +91,12 @@ push/PR to this branch and can also be started manually via `workflow_dispatch`.
 
 * The **editor** and the **Vulkan / WebGPU** backends are not part of the minimal scope and are
   unverified on Windows 7.
+* **Static CRT + DLLs.** Because the engine is built as a set of DLLs, statically linking the CRT gives each
+  module its own CRT heap. Memory that is allocated by one module and freed by another through the raw CRT
+  `new`/`delete`/`malloc`/`free` (rather than via ezEngine's own allocators) can corrupt the heap. In
+  practice ezEngine routes allocations through `ezAllocator`, but this is the main thing to watch when running
+  with the static CRT. If cross-module raw-CRT frees turn out to be a problem, build the engine as static
+  libraries, or keep `EZ_MSVC_STATIC_RUNTIME=OFF` and deploy the VC++ 2019 redistributable instead.
 * Third-party libraries are compiled with the lowered `_WIN32_WINNT`. Most of them already resolve
   Windows 8+ APIs at runtime, but any dependency that *statically* imports a Windows 8+ symbol would
   fail to load on Windows 7; such a case would surface as a "procedure not found" loader error and would

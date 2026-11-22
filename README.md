@@ -18,7 +18,7 @@ All non-rendering related functionality compiles on Windows, Android, Linux and 
 
 ### Windows 7 (SP1) backport
 
-A best-effort Windows 7 SP1 target is available. It lowers `_WIN32_WINNT` to `0x0601`, resolves Windows 8+ APIs (e.g. `IDXGIFactory6`, `GetDpiForWindow`) at runtime, and relaxes the minimum D3D feature level to 11.0. Build it with the **v142 (VS2019)** toolset via the `vs2019x64-win7` CMake preset (`GenerateWin7vs2019.bat`). Details and limitations are in [Documentation/Windows7Backport.md](Documentation/Windows7Backport.md).
+A best-effort Windows 7 SP1 target is available. It lowers `_WIN32_WINNT` to `0x0601`, resolves Windows 8+ APIs (e.g. `IDXGIFactory6`, `GetDpiForWindow`) at runtime, relaxes the minimum D3D feature level to 11.0, and **statically links the MSVC runtime** so no external Universal CRT (`ucrtbase.dll`) deployment is needed on the target. Build it with the **v142 (VS2019)** toolset via the `vs2019x64-win7` CMake preset (`GenerateWin7vs2019.bat`). Details and limitations are in [Documentation/Windows7Backport.md](Documentation/Windows7Backport.md).
 
 ## Prebuilt Binaries
 
